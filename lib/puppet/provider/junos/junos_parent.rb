@@ -83,6 +83,10 @@ class Puppet::Provider::Junos < Puppet::Provider
   ##### reader methods
   ##### ------------------------------------------------------------   
   
+  def self.netdev
+    return (@@netdev.ready) ? @@netdev : nil
+  end
+  
   def self.mk_netdev_resource_methods
     (resource_type.validproperties - [:ensure]).each do |prop|
       prop_sym = symbolize(prop)

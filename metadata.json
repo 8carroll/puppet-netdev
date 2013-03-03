@@ -1,0 +1,227 @@
+{
+  "source": "git://github.com/jeremyschulman/jeremyschulman-netdev.git",
+  "project_page": "https://github.com/jeremyschulman/jeremyschulman-netdev.git",
+  "checksums": {
+    "README.md": "78481b77d2ddd29f32fca1e243fa39c7",
+    "NETDEV-RESOURCES.md": "2ee667fa505091c6c336ac2327d662e2",
+    "lib/puppet/provider/junos/junos_parent.rb": "0b669a595fe4a6d8dedc2114a2bbbccf",
+    "CHANGELOG.md": "7c766f8fcb59a55f9706176fa2fc24f0",
+    "lib/puppet/provider/netdev_lag/junos.rb": "7aa1f14019a236bd3085497fc6513b87",
+    "lib/puppet/type/netdev_lag.rb": "99b2c16dc1b22a094d9b70941c96e28a",
+    "lib/puppet/type/netdev_device.rb": "57a1a30a958dd8cede6a48ecedbd8f11",
+    "lib/puppet/type/netdev_interface.rb": "35535cb4a71dfca0a3d7242b9db6e50f",
+    "LICENSE": "1ac394e2e858b6ce915ac8fe8f4b881b",
+    "lib/puppet/provider/junos/junos_netdev.rb": "fb9eb7ddf5c280befa992718d4e28a23",
+    "lib/puppet/provider/netdev_interface/junos.rb": "4568f4bcb9a74ba7bd6fa67a47328771",
+    "lib/puppet/provider/netdev_vlan/junos.rb": "9e6e4c0c4674bef095c01ae4c989c2f3",
+    "lib/puppet/provider/junos/junos_netdev_log.rb": "955d700a78b8a1af6a5c64d258cd613f",
+    "lib/puppet/type/netdev_l2_interface.rb": "f84b06641447e794ae2096a0149ac5df",
+    "Modulefile": "5cf4b057e0dd14255dd2d1812e9e3c76",
+    "lib/puppet/provider/netdev_device/junos.rb": "b3c23054b61d4b23734338c4b3e85029",
+    "lib/puppet/provider/junos/junos_vlan.rb": "7ecebc1e8a2fe1fded5fc72d03ee570d",
+    "lib/puppet/provider/netdev_l2_interface/junos.rb": "2700a334435427cee21e87d13fd153bf",
+    "lib/puppet/provider/junos/junos_l2_interface.rb": "5884739b654187bc17fa206be9e7575b",
+    "lib/puppet/provider/junos/junos_netdev_res.rb": "6cfa3ae5fd81eb824e4f2e57a12c35e2",
+    "lib/puppet/provider/junos/junos_lag.rb": "1e73fe895ce6da92ee834cbde76e59c9",
+    "lib/puppet/type/netdev_vlan.rb": "98d1ee92aeabeb702fba4f3f625a3c52",
+    "lib/puppet/provider/junos/junos_netdev_device.rb": "86aacd762e2599381097891ba034b7b2",
+    "lib/puppet/provider/junos/junos_interface.rb": "af9cdb670acf5cd5774a9755ad0167bd"
+  },
+  "license": "see LICENSE",
+  "dependencies": [
+
+  ],
+  "types": [
+    {
+      "providers": [
+        {
+          "name": "junos",
+          "doc": "Junos VLAN"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "name",
+          "doc": "The VLAN name"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensure",
+          "doc": "The basic property that the resource should be in.  Valid values are `present`, `absent`."
+        },
+        {
+          "name": "active",
+          "doc": "Config activation  Valid values are `true`, `false`."
+        },
+        {
+          "name": "description",
+          "doc": "The VLAN Description"
+        },
+        {
+          "name": "vlan_id",
+          "doc": "The VLAN ID"
+        },
+        {
+          "name": "no_mac_learning",
+          "doc": "Do not learn MAC addresses; used for 2-port VLANs  Valid values are `true`, `false`."
+        }
+      ],
+      "name": "netdev_vlan",
+      "doc": "Network Device VLAN"
+    },
+    {
+      "providers": [
+        {
+          "name": "junos",
+          "doc": "Junos L2-switch interface"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "name",
+          "doc": "The switch interface name"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensure",
+          "doc": "The basic property that the resource should be in.  Valid values are `present`, `absent`."
+        },
+        {
+          "name": "active",
+          "doc": "Config activation  Valid values are `true`, `false`."
+        },
+        {
+          "name": "vlan_tagging",
+          "doc": "The switch interface vlan-tagging mode  Valid values are `enable`, `disable`."
+        },
+        {
+          "name": "description",
+          "doc": "The switch interface description."
+        },
+        {
+          "name": "tagged_vlans",
+          "doc": "Array of VLAN names used for tagged packets"
+        },
+        {
+          "name": "untagged_vlan",
+          "doc": "VLAN used for untagged packets"
+        }
+      ],
+      "name": "netdev_l2_interface",
+      "doc": "Ethernet layer2 (switch-port) interface"
+    },
+    {
+      "providers": [
+        {
+          "name": "junos",
+          "doc": "Junos Physical Interface"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "name",
+          "doc": "Interface Name"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensure",
+          "doc": "The basic property that the resource should be in.  Valid values are `present`, `absent`."
+        },
+        {
+          "name": "active",
+          "doc": "Config activation  Valid values are `true`, `false`."
+        },
+        {
+          "name": "admin",
+          "doc": "Interface admin state [up*|down]  Valid values are `up`, `down`."
+        },
+        {
+          "name": "description",
+          "doc": "Interface physical port description"
+        },
+        {
+          "name": "mtu",
+          "doc": "Maximum Transmission Unit"
+        },
+        {
+          "name": "speed",
+          "doc": "Link speed [auto*|10m|100m|1g|10g]  Valid values are `auto`, `1g`, `10g`, `100m`, `10m`."
+        },
+        {
+          "name": "duplex",
+          "doc": "Duplex mode [auto*|full|half]  Valid values are `auto`, `full`, `half`."
+        }
+      ],
+      "name": "netdev_interface",
+      "doc": "Network Device Physical Interface"
+    },
+    {
+      "providers": [
+        {
+          "name": "junos",
+          "doc": "Junos Device Managed Resource for auto-require"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "name",
+          "doc": "The network device name can be any placeholder value"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensure",
+          "doc": "The basic property that the resource should be in.  Valid values are `present`, `absent`."
+        }
+      ],
+      "name": "netdev_device",
+      "doc": "Network device resource to support autorequire relationships"
+    },
+    {
+      "providers": [
+        {
+          "name": "junos",
+          "doc": "Junos Link Aggregation Group"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "name",
+          "doc": "LAG Name"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensure",
+          "doc": "The basic property that the resource should be in.  Valid values are `present`, `absent`."
+        },
+        {
+          "name": "active",
+          "doc": "Config activation  Valid values are `true`, `false`."
+        },
+        {
+          "name": "lacp",
+          "doc": "LACP [ passive | active | disabled* ]  Valid values are `active`, `passive`, `disabled`."
+        },
+        {
+          "name": "minimum_links",
+          "doc": "Number of active links required for LAG to be 'up'"
+        },
+        {
+          "name": "links",
+          "doc": "Array of Physical Interfaces"
+        }
+      ],
+      "name": "netdev_lag",
+      "doc": "Network Device Link Aggregation Group"
+    }
+  ],
+  "summary": "Vendor agnostic networking device resource types",
+  "description": "A collection of vendor agnostic networking resource-types",
+  "name": "jeremyschulman-netdev",
+  "author": "Jeremy Schulman, Juniper Networks",
+  "version": "0.8.1"
+}

@@ -38,8 +38,40 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
 require 'puppet/provider/junos/junos_l2_interface'
 
-Puppet::Type.type(:netdev_l2_interface).provide(:junos, :parent => Puppet::Provider::Junos::L2Interface) do
+Puppet::Type.type(:netdev_l2_interface).provide(:junos_vlan, :parent => Puppet::Provider::Junos::L2Interface) do
+  confine :junos_switch_style => :vlan
+  
   @doc = "Junos L2-switch interface"
+  
+  ### invoke class method to autogen the default property methods for both Puppet
+  ### and the netdev module.  That's it, yo!
+
+  mk_resource_methods    
+  mk_netdev_resource_methods
+  
+end
+
+require 'puppet/provider/junos/junos_l2_interface_bd'
+
+Puppet::Type.type(:netdev_l2_interface).provide(:junos_bd, :parent => Puppet::Provider::Junos::L2InterfaceBridgeDomain) do
+  confine :junos_switch_style => :bridge_domain
+  
+  @doc = "Junos L2-switch interface, Bridge-Domain"
+  
+  ### invoke class method to autogen the default property methods for both Puppet
+  ### and the netdev module.  That's it, yo!
+
+  mk_resource_methods    
+  mk_netdev_resource_methods
+  
+end
+
+require 'puppet/provider/junos/junos_l2_interface_l2ng'
+
+Puppet::Type.type(:netdev_l2_interface).provide(:junos_l2ng, :parent => Puppet::Provider::Junos::L2InterfaceL2NG) do
+  confine :junos_switch_style => :vlan_l2ng
+  
+  @doc = "Junos L2-switch interface, L2NG"
   
   ### invoke class method to autogen the default property methods for both Puppet
   ### and the netdev module.  That's it, yo!

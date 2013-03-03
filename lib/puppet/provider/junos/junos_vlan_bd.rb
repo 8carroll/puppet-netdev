@@ -2,15 +2,12 @@
 * Puppet Module  : Provder: netdev
 * Author         : Jeremy Schulman
 * File           : junos_vlan.rb
-* Version        : 2012-11-07
-* Platform       : EX | QFX | SRX
+* Version        : 2013-02-19
+* Platform       : MX
 * Description    : 
 *
-*   This file contains the Junos specific code to control basic
-*   VLAN configuration on platforms that support the [edit vlans]
-*   hierarchy.
 *
-* Copyright (c) 2012  Juniper Networks. All Rights Reserved.
+* Copyright (c) 2013  Juniper Networks. All Rights Reserved.
 *
 * YOU MUST ACCEPT THE TERMS OF THIS DISCLAIMER TO USE THIS SOFTWARE, 
 * IN ADDITION TO ANY OTHER LICENSES AND TERMS REQUIRED BY JUNIPER NETWORKS.
@@ -37,19 +34,20 @@
 
 require 'puppet/provider/junos/junos_parent'
 
-class Puppet::Provider::Junos::Vlan < Puppet::Provider::Junos
+class Puppet::Provider::Junos::BridgeDomain < Puppet::Provider::Junos
   
   ### --------------------------------------------------------------------
   ### triggered by provider #exists? 
   ### --------------------------------------------------------------------  
   
   def netdev_res_exists?  
-    
+        
     return false unless (vlan_config = init_resource)
 
     @ndev_res[:vlan_id] = vlan_config.xpath('vlan-id').text.chomp
     @ndev_res[:description] = vlan_config.xpath('description').text.chomp
-    @ndev_res[:no_mac_learning] = vlan_config.xpath('no-mac-learning').empty? ? :false : :true
+    @ndev_res[:no_mac_learning] = 
+      vlan_config.xpath('bridge-options/no-mac-learning').empty? ? :false : :true    
         
     return true
   end   
@@ -62,11 +60,10 @@ class Puppet::Provider::Junos::Vlan < Puppet::Provider::Junos
     
     resource[:description] ||= default_description
     
-    @ndev_res ||= NetdevJunos::Resource.new( self, "vlans", "vlan" )             
+    @ndev_res ||= NetdevJunos::Resource.new( self, "bridge-domains", "domain" )             
     
-    return nil unless (ndev_config = @ndev_res.getconfig)
-    
-    return nil unless vlan_config = ndev_config.xpath('//vlan')[0]    
+    return nil unless (ndev_config = @ndev_res.getconfig)    
+    return nil unless vlan_config = ndev_config.xpath('//domain')[0]    
     
     @ndev_res.set_active_state( vlan_config )    
     
@@ -77,30 +74,43 @@ class Puppet::Provider::Junos::Vlan < Puppet::Provider::Junos
     "Puppet created VLAN: #{resource[:name]}: #{resource[:vlan_id]}"
   end
   
+  def on_new_bridge_domain( xml )
+    xml.send(:'domain-type', 'bridge')
+  end
+  
   ##### ------------------------------------------------------------
   ##### XML builder routines, one for each property
   ##### ------------------------------------------------------------   
   
   def xml_change_vlan_id( xml )
+    if @ndev_res.is_new?
+      on_new_bridge_domain( xml )
+    end
     xml.send :"vlan-id", resource[:vlan_id]
-    on_change_vlan_id( xml )    
+    on_change_vlan_id( xml )
   end
   
   def xml_change_description( xml )
     xml.description resource[:description]
-  end   
+  end  
   
-  def xml_change_no_mac_learning( xml )
-    ml = resource[:no_mac_learning] == :false
-    return if @ndev_res.is_new? and ml
+  def xml_change_no_mac_learning( xml )    
+    no_ml = resource[:no_mac_learning] == :false    
+    return if @ndev_res.is_new? and no_ml
     
-    xml.send( :'no-mac-learning', ml ? Netconf::JunosConfig::DELETE : nil )
-  end
+    xml.send(:'bridge-options') {
+      xml.send(:'no-mac-learning', no_ml ? Netconf::JunosConfig::DELETE : nil )
+    }
+  end     
   
+  
+  ##### ------------------------------------------------------------
+  ##### Helper, Utilities ....
+  ##### ------------------------------------------------------------  
+    
   def on_change_vlan_id( xml )
-    return unless Facter.value('junos_switch_style') == 'vlan_l2ng'
     
-    # because the L2NG codes the vlan-id values into the interfaces,
+    # because the MX codes the vlan-id values into the interfaces,
     # we now need to update all instances of the use of the vlan. Yo!
     # so the trick here is to create a false-name by prepending a 
     # tilde (~) before the vlan_name.  Then tinker with the 
@@ -118,8 +128,8 @@ class Puppet::Provider::Junos::Vlan < Puppet::Provider::Junos
     catalog = resource.catalog
     
     rpc = @ndev_res.rpc
-    bd_info = rpc.get_vlan_information( :vlan_name => vlan_name )
-    intfs = bd_info.xpath('//l2ng-l2rtb-vlan-member-interface')
+    bd_info = rpc.get_bridge_instance_information( :bridge_domain_name => vlan_name )
+    intfs = bd_info.xpath('//l2rtb-interface-name')
     
     intfs.each do |x_int|
       ifd_name = x_int.text[/(.*)\./,1]
@@ -129,10 +139,10 @@ class Puppet::Provider::Junos::Vlan < Puppet::Provider::Junos
         end
         l2_intf[:untagged_vlan] = vlan_name_new if l2_intf[:untagged_vlan] == vlan_name
       else
-        NetdevJunos::Log.err "Unmanaged VLAN interface: #{ifd_name}"
+        NetdevJunos::Log.err "Unmanaged bridge interface: #{ifd_name}"
       end
     end
     
-  end  
-  
+  end
+    
 end

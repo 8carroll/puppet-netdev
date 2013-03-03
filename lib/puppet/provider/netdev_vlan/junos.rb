@@ -38,12 +38,25 @@
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__),"..","..",".."))
 require 'puppet/provider/junos/junos_vlan'
 
-Puppet::Type.type(:netdev_vlan).provide(:junos, :parent => Puppet::Provider::Junos::Vlan) do
+Puppet::Type.type(:netdev_vlan).provide(:junos_vlan, :parent => Puppet::Provider::Junos::Vlan) do
+  confine :junos_switch_style => [:vlan, :vlan_l2ng]
   
   @doc = "Junos VLAN"
 
   ### invoke class method to autogen the default property methods for both Puppet
   ### and the netdev module.  That's it, yo!
+
+  mk_resource_methods    
+  mk_netdev_resource_methods
+
+end
+
+require 'puppet/provider/junos/junos_vlan_bd'
+
+Puppet::Type.type(:netdev_vlan).provide(:junos_bd, :parent => Puppet::Provider::Junos::BridgeDomain) do
+  confine :junos_switch_style => :bridge_domain
+  
+  @doc = "Junos VLAN for Bridge-Domain"
 
   mk_resource_methods    
   mk_netdev_resource_methods

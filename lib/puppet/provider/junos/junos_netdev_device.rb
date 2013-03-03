@@ -55,10 +55,16 @@ module NetdevJunos
       rescue Netconf::RpcError => e
         # the load_configuration may yeield rpc-errors that are in fact not errors, 
         # but merely warnings.  Check for that here.
-        unless e.rsp.xpath('//rpc-error[error-severity = "error"]').empty?
-          NetdevJunos::Log.err "ERROR: load-configuration\n" + e.rsp.to_xml, :tags => [:config, :fail]
-        else
+        rpc_errs = e.rsp.xpath('//rpc-error')
+        if rpc_errs.empty?
           @edits_count += 1;
+        else 
+          # ignore warnings ...
+          all_count = rpc_errs.count
+          warn_count = rpc_errs.xpath('error-severity').select{|err| err.text == 'warning'}.count 
+          if all_count - warn_count > 0          
+            NetdevJunos::Log.err "ERROR: load-configuration\n" + e.rsp.to_xml, :tags => [:config, :fail]
+          end
         end
       else
         @edits_count += 1;      
@@ -88,6 +94,7 @@ module NetdevJunos
         ensure
           @netconf.rpc.unlock_configuration                   
         end        
+        
       end # -- committing changes
      
       NetdevJunos::Log.debug "Closing NETCONF connection"

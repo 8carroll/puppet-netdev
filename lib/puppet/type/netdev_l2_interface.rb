@@ -49,12 +49,20 @@ Puppet::Type.newtype(:netdev_l2_interface) do
   
   newproperty(:tagged_vlans, :array_matching => :all) do
     desc "Array of VLAN names used for tagged packets"
-    munge do |v| 
-      Array( v )
-    end
+    defaultto([])
+    munge{ |v| Array(v) }
+    
     def insync?(is)
       is.sort == @should.sort.map(&:to_s)
     end
+    
+    def should_to_s( value )
+      "[" + value.join(',') + "]"
+    end
+    def is_to_s( value )
+      "[" + value.join(',') + "]"
+    end
+    
   end
   
   newproperty(:untagged_vlan) do
@@ -73,5 +81,11 @@ Puppet::Type.newtype(:netdev_l2_interface) do
     raise "No netdev_device found in catalog" unless netdev
     netdev.title   # returns the name of the netdev_device resource
   end   
+    
+  autorequire(:netdev_vlan) do    
+    vlans = self[:tagged_vlans] || []
+    vlans << self[:untagged_vlan] if self[:untagged_vlan]
+    vlans.flatten
+  end    
   
 end

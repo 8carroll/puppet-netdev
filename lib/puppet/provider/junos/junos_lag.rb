@@ -44,6 +44,19 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
   
   def netdev_res_exists?   
     
+    ### need to setup the @ifd_ether_options before we return anything
+    ### since this will be used in the case of a yet-to-be-created LAG
+    
+    if Facter.value(:junos_ifd_style) == 'classic'
+      # all ports in the LAG must be of the same type, so check the first one
+      # and use it to determine the options stanza name.  yo.
+      l_0 = resource[:links][0].to_s
+      @ifd_ether_options = (l_0.start_with? 'fe-') ? 'fastether-options' : 'gigether-options'
+    else
+      # switching platforms are standardized on the same stanza name. 
+      @ifd_ether_options = 'ether-options'    
+    end    
+    
     return false unless ae_config = init_resource   
     
     nc = netdev_get.netconf.rpc
@@ -56,7 +69,7 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
     # only want the IFD names in the @ndev_res hash
     
     @ndev_res[:links] = get_cookie_links( ae_config ) || []
-
+    
     # -------------------------------------------    
     # PROPERTY: minimum_links
     # -------------------------------------------
@@ -176,7 +189,7 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
 
     add.each{ |new_ifd| Nokogiri::XML::Builder.with( dot_ifd ) {
       |dot| dot.interface { dot.name new_ifd
-        dot.send(:'ether-options') {
+        dot.send(@ifd_ether_options.to_sym) {
           dot.send(:'ieee-802.3ad') {
             dot.bundle resource[:name]
           }
@@ -185,7 +198,7 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
 
     del.each{ |new_ifd| Nokogiri::XML::Builder.with( dot_ifd ) {
       |dot| dot.interface { dot.name new_ifd
-        dot.send(:'ether-options') {
+        dot.send(@ifd_ether_options) {
           dot.send( :'ieee-802.3ad', Netconf::JunosConfig::DELETE )
         }
     }}}      
