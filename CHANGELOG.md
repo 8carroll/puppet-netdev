@@ -8,4 +8,8 @@
 * Requires Puppet for Junos OS software package to be installed on Junos OS device.  
   For documentation, refer to: [Puppet for Junos OS](http://www.juniper.net/techpubs/en_US/release-independent/junos-puppet/information-products/pathway-pages/index.html)
   
+### 2013-03-03
+* Enhancements to support Juniper MX5 ... MX960 products
+
+  
 
