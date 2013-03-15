@@ -110,6 +110,50 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
     return lagcfg
   end
 
+  ### ---------------------------------------------------------------
+  ### Overriding Parent methods
+  ### ---------------------------------------------------------------  
+  
+  def destroy    
+    Puppet.debug( "#{self.resource.type}::LAG-DESTROY #{resource[:name]}" )
+    
+    # we need to load the known IFD ports in the lag so we can unbind them
+    # from the lag.  We 'trick' the Puppet agent into processing the 
+    # "change links" method, and from there we can do the unlink and
+    # removal of the IFD (special-case)
+    
+    ae_config = init_resource      
+    @ndev_res[:links] = get_cookie_links( ae_config ) || []    
+    resource[:links] = []    
+    @property_hash[:links] = true
+    
+  end  
+ 
+  ### on_destroy is called by the 'change links' handler as a special
+  ### case. that handler will immediately return once on_destroy is done
+  
+  def on_destroy( has_links, xml )
+    
+    par = xml.instance_variable_get(:@parent)         
+    dot_ifd = par.at_xpath('ancestor::interfaces')      
+    
+    has_links.each do |new_ifd| Nokogiri::XML::Builder.with( dot_ifd ) do |dot|
+      dot.interface { dot.name new_ifd
+        dot.send(@ifd_ether_options) {
+          dot.send( :'ieee-802.3ad', Netconf::JunosConfig::DELETE )
+        }
+      }
+      end
+    end
+    
+    Nokogiri::XML::Builder.with( dot_ifd ) do |dot|
+      dot.interface( Netconf::JunosConfig::DELETE ) { 
+        dot.name resource[:name]
+      }
+    end
+    
+  end
+
   ##### ------------------------------------------------------------
   #####              Utilities
   ##### ------------------------------------------------------------   
@@ -171,10 +215,21 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
   # PROPERTY: links
   # -------------------------------------------
   
-  def xml_change_links( xml )
+  def xml_change_links( xml )    
     
     has = @ndev_res[:links] || []
     should = resource[:links] || []
+    
+    # --------------------------------------------------------------------
+    # this is a special case where we're removing the entire LAG
+    # we use an empty links list to trigger this action, see #destroy
+    # method in the above code.
+    # --------------------------------------------------------------------    
+    
+    if should.empty?
+      on_destroy( has, xml )
+      return
+    end    
     
     set_cookie_links( xml )
     
@@ -202,7 +257,7 @@ class Puppet::Provider::Junos::LAG < Puppet::Provider::Junos
           dot.send( :'ieee-802.3ad', Netconf::JunosConfig::DELETE )
         }
     }}}      
-    
+        
   end
 
 end

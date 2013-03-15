@@ -34,6 +34,7 @@
 * THE POSSIBILITY OF SUCH DAMAGES.
 =end
 
+
 require 'puppet/provider/junos/junos_parent'
 
 class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos 
@@ -48,6 +49,7 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
     resource[:tagged_vlans] = resource[:tagged_vlans].to_a || []     
     resource[:untagged_vlan] ||= ''     # if not set in manifest, it is nil   
     resource[:vlan_tagging] = :enable unless resource[:tagged_vlans].empty?   
+    resource[:tagged_vlans] += [resource[:untagged_vlan]] unless resource[:untagged_vlan].empty?
     
     self.class.initcvar_for_untagged_vlan      
     self.class.initcvar_vlanxrefs( resource )    
@@ -212,20 +214,26 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
       
     end
     
+    ### ------------------------------------------------------------------
+    ### vlanxrefs_addbytag and vlan_tags_to_names is called by the 
+    ### routines when the configuration is loaded from the device.  
+    ### ------------------------------------------------------------------
+    
     def vlanxrefs_addbytag( switch_name, tag_id )   # returns the vlan name
       
       # resource[:vlan_id] is a Fixnum, and tag_id is String. So
       # convert to Fixnum now for comparison ...
       tag_id_i = tag_id.to_i            
+            
+      p_ndev_vlan = @@catalog_netdev_vlan.select{ |v| v[:vlan_id].to_i == tag_id_i  }[0]
       
-      p_ndev_vlan = @@catalog_netdev_vlan.select{ |v| v[:vlan_id] == tag_id_i }[0]
       if p_ndev_vlan
         vlan_name = p_ndev_vlan[:name]
         @@vlan_name_hash[vlan_name] = tag_id
         @@vlan_tag_hash[tag_id] = vlan_name
         vlan_name
       else             
-        Kernel.raise Puppet::DevError, "Unknown VLAN, tag-id: #{tag_id} does not exist!"      
+        Kernel.raise Puppet::DevError, "Unknown VLAN by tag-id: #{tag_id} !"      
       end
     end
     
@@ -236,6 +244,12 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
         @@vlan_tag_hash[tagid_a] || vlanxrefs_addbytag( 'default-switch', tagid_a )
       end
     end
+    
+
+    ### ------------------------------------------------------------------
+    ### vlan_names_to_tags is called when this provider is writing the 
+    ### configuration back to the device via the XML routines below ...
+    ### ------------------------------------------------------------------
     
     def vlan_names_to_tags( names_a )
       if names_a.class == Array
@@ -309,6 +323,7 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
     return if mode_changed?  
     upd_tagged_vlans( xml )
   end
+  
     
   def upd_tagged_vlans( xml )
     
@@ -322,7 +337,7 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
     
     del = self.class.vlan_names_to_tags( has - should )
     add = self.class.vlan_names_to_tags( should - has )    
-    
+        
     if add or del
       Puppet.debug "#{resource[:name]}: Adding VLANS: [#{add.join(',')}]" unless add.empty?
       Puppet.debug "#{resource[:name]}: Deleting VLANS: [#{del.join(',')}]" unless del.empty?      
@@ -463,13 +478,17 @@ class Puppet::Provider::Junos::L2InterfaceBridgeDomain < Puppet::Provider::Junos
     def set_native_vlan_id( this, xml, delete = :no )
       par = xml.instance_variable_get(:@parent)     
       vlan_id = vlan_names_to_tags( this.resource[:untagged_vlan] )
+      
       Nokogiri::XML::Builder.with( par.at_xpath( 'ancestor::interface' )) do |dot|
         if delete == :delete
-          dot.send( :'native-vlan-id', Netconf::JunosConfig::DELETE )
+          # vlan-id-list is removed by another routine :-)
+          dot.send( :'native-vlan-id', Netconf::JunosConfig::DELETE )       
         else
+          xml.send( :'vlan-id-list', vlan_id )
           dot.send( :'native-vlan-id', vlan_id )
         end
       end    
+      
     end 
 
     def set_ifd_trunking( xml, should_trunk )

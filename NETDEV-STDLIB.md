@@ -1,4 +1,5 @@
-# USING NETDEV RESOURCES
+# USING NETDEV STDLIB
+
 All netdev resources types include the following two properties:
 
   * ensure => [ present* | absent ]

@@ -2,7 +2,7 @@
 * Puppet Module  : Provder: netdev
 * Author         : Jeremy Schulman
 * File           : junos_l2_interface_l2ng.rb
-* Version        : 2013-03-03
+* Version        : 2013-03-12
 * Platform       : EX-L2NG
 * Description    : 
 *
@@ -47,7 +47,8 @@ class Puppet::Provider::Junos::L2InterfaceL2NG < Puppet::Provider::Junos
     resource[:description] ||= default_description
     resource[:tagged_vlans] = resource[:tagged_vlans].to_a || []     
     resource[:untagged_vlan] ||= ''     # if not set in manifest, it is nil   
-    resource[:vlan_tagging] = :enable unless resource[:tagged_vlans].empty?   
+    resource[:vlan_tagging] = :enable unless resource[:tagged_vlans].empty? 
+    resource[:tagged_vlans] += [resource[:untagged_vlan]] unless resource[:untagged_vlan].empty?    
     
     self.class.initcvar_for_untagged_vlan      
     self.class.initcvar_vlanxrefs( resource )    
@@ -220,7 +221,7 @@ class Puppet::Provider::Junos::L2InterfaceL2NG < Puppet::Provider::Junos
       # convert to Fixnum now for comparison ...
       tag_id_i = tag_id.to_i            
       
-      p_ndev_vlan = @@catalog_netdev_vlan.select{ |v| v[:vlan_id] == tag_id_i }[0]
+      p_ndev_vlan = @@catalog_netdev_vlan.select{ |v| v[:vlan_id].to_i == tag_id_i }[0]
       if p_ndev_vlan
         vlan_name = p_ndev_vlan[:name]
         @@vlan_name_hash[vlan_name] = tag_id
@@ -473,7 +474,10 @@ class Puppet::Provider::Junos::L2InterfaceL2NG < Puppet::Provider::Junos
         if delete == :delete
           dot.send( :'native-vlan-id', Netconf::JunosConfig::DELETE )
         else
-          dot.send( :'native-vlan-id', vlan_id )
+          dot.send( :'native-vlan-id', vlan_id )    
+          xml.vlan {
+            xml.members vlan_id
+          }
         end
       end    
     end 

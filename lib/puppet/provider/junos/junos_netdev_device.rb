@@ -51,25 +51,25 @@ module NetdevJunos
       # rescue it here.  
       
       begin
-        @netconf.rpc.load_configuration( load_config, :action => 'replace' )              
+        
+        @edits_count += 1
+        @netconf.rpc.load_configuration( load_config, :action => 'replace' )
+        
       rescue Netconf::RpcError => e
         # the load_configuration may yeield rpc-errors that are in fact not errors, 
         # but merely warnings.  Check for that here.
-        rpc_errs = e.rsp.xpath('//rpc-error')
-        if rpc_errs.empty?
-          @edits_count += 1;
-        else 
+        if rpc_errs = e.rsp.xpath('//rpc-error')
           # ignore warnings ...
           all_count = rpc_errs.count
           warn_count = rpc_errs.xpath('error-severity').select{|err| err.text == 'warning'}.count 
           if all_count - warn_count > 0          
+            @edits_count -= 1
             NetdevJunos::Log.err "ERROR: load-configuration\n" + e.rsp.to_xml, :tags => [:config, :fail]
           end
         end
-      else
-        @edits_count += 1;      
-      end
-    end
+      end # rescue block
+      
+    end # edit_config
 
     ###
     ### Commit the candidate configuration, invoked by

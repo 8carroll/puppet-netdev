@@ -130,16 +130,18 @@ class Puppet::Provider::Junos::BridgeDomain < Puppet::Provider::Junos
     rpc = @ndev_res.rpc
     bd_info = rpc.get_bridge_instance_information( :bridge_domain_name => vlan_name )
     intfs = bd_info.xpath('//l2rtb-interface-name')
-    
+        
     intfs.each do |x_int|
       ifd_name = x_int.text[/(.*)\./,1]
+      next unless ifd_name
+      
       if l2_intf = catalog.resource( :netdev_l2_interface, ifd_name )
         if l2_intf[:tagged_vlans].include? [vlan_name]
           l2_intf[:tagged_vlans] = l2_intf[:tagged_vlans] - vlan_old + vlan_new
         end
         l2_intf[:untagged_vlan] = vlan_name_new if l2_intf[:untagged_vlan] == vlan_name
       else
-        NetdevJunos::Log.err "Unmanaged bridge interface: #{ifd_name}"
+        NetdevJunos::Log.notice "Unmanaged bridge interface: #{x_int.text} for vlan #{vlan_name}"
       end
     end
     

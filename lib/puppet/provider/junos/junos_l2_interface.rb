@@ -46,6 +46,8 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
   
   def netdev_res_exists?
     
+    self.class.init_class_vars    
+        
     return false unless (ifl_config = init_resource)
     
     @ndev_res[:description] = ifl_config.xpath('description').text.chomp    
@@ -63,7 +65,6 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
   ### ---------------------------------------------------------------  
   
   def init_resource
-    @@init_cvars ||= self.class.init_class_vars    
     
     @ndev_res ||= NetdevJunos::Resource.new( self, "interfaces" )
     
@@ -92,7 +93,7 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
   
   def netdev_retrieve_fam_eth_info( fam_eth_cfg )
     
-    @ndev_res[:vlan_tagging] = fam_eth_cfg.xpath(@@port_mode_name).text.chomp == 'trunk' ? :enable : :disable
+    @ndev_res[:vlan_tagging] = fam_eth_cfg.xpath('port-mode').text.chomp == 'trunk' ? :enable : :disable
     
     # --- access port      
     
@@ -166,7 +167,7 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
   def xml_change_vlan_tagging( xml )
     
     port_mode = should_trunk? ? 'trunk' : 'access'
-    xml.send @@port_mode_name.to_sym, port_mode
+    xml.send(:'port-mode', port_mode )
     
     # when the vlan_tagging value changes then this method
     # will trigger updates to the untagged_vlan and tagged_vlans
@@ -187,7 +188,7 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
   end
   
   def upd_tagged_vlans( xml )
-    
+        
     return unless should_trunk?
     
     should = resource[:tagged_vlans] || []
@@ -195,7 +196,7 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
     if should.empty?
       xml.vlan Netconf::JunosConfig::DELETE
       return
-    end
+   end
     
     has = @ndev_res[:tagged_vlans] || []    
     has = has.map(&:to_s)    
@@ -266,22 +267,8 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
     ### initialize the jump table once as a class variable
     ### this is called from #init_resource
     
-    def init_class_vars          
-      
-      style = Facter.value('junos_switch_style')
-      case style
-      when 'vlan'
-        @@port_mode_name = 'port-mode'
-        @@proc_nvi_wr = self.method(:set_native_vlan_id_ifl)
-      when 'vlan_l2ng'
-        @@port_mode_name = 'interface-mode'        
-        @@proc_nvi_wr = self.method(:set_native_vlan_id_ifd)        
-      else
-        raise "Unknown junos_switch_style: #{style}"
-      end
-      
-      @@untgv_jmptbl = initcvar_jmptbl_untagged_vlan      
-      true
+    def init_class_vars                      
+      @@untgv_jmptbl ||= initcvar_jmptbl_untagged_vlan      
     end
     
     ### invoke the correct method from the jump table
@@ -310,12 +297,12 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
     end
     
     def tr_ac_nountg( this, xml )
-      @@proc_nvi_wr.call( this, xml, :delete )            
+      xml.send :'native-vlan-id', Netconf::JunosConfig::DELETE              
       xml.vlan( Netconf::JunosConfig::DELETE ) if this.ndev_res[:tagged_vlans]
     end
     
     def tr_tr_nountg( this, xml )
-      @@proc_nvi_wr.call( this, xml, :delete )            
+      xml.send :'native-vlan-id', Netconf::JunosConfig::DELETE              
     end
     
     def ac_ac_untg( this, xml )
@@ -330,47 +317,20 @@ class Puppet::Provider::Junos::L2Interface < Puppet::Provider::Junos
       xml.vlan( Netconf::JunosConfig::REPLACE ) { 
         xml.members was_untg_vlan, Netconf::JunosConfig::DELETE if was_untg_vlan
       }
-      
-      @@proc_nvi_wr.call( this, xml )
+      xml.send :'native-vlan-id', this.resource[:untagged_vlan]              
     end
     
     def tr_ac_untg( this, xml )
-      @@proc_nvi_wr.call( this, xml, :delete )      
-      
+      xml.send :'native-vlan-id', Netconf::JunosConfig::DELETE              
       xml.vlan( Netconf::JunosConfig::REPLACE ) {
         xml.members this.resource[:untagged_vlan]
       }            
     end
     
     def tr_tr_untg( this, xml )
-      @@proc_nvi_wr.call( this, xml )      
+      xml.send :'native-vlan-id', this.resource[:untagged_vlan]              
     end
-    
-    ### -------------------------------------------------------------
-    ### dealing with the displacement of native-vlan-id
-    ### betweeen vlan (IFL) and vlan_l2ng modes (IFD)
-    ### -------------------------------------------------------------
-    
-    def set_native_vlan_id_ifl( this, xml, delete = :no )      
-      if delete == :delete
-        xml.send :'native-vlan-id', Netconf::JunosConfig::DELETE        
-      else
-        xml.send :'native-vlan-id', this.resource[:untagged_vlan]              
-      end
-    end
-    
-    def set_native_vlan_id_ifd( this, xml, delete = :no )
-      par = xml.instance_variable_get(:@parent)     
-      vlan_id = this.resource[:untagged_vlan]
-      Nokogiri::XML::Builder.with( par.at_xpath( 'ancestor::interface' )) do |dot|
-        if delete == :delete
-          dot.send( :'native-vlan-id', Netconf::JunosConfig::DELETE )
-        else
-          dot.send( :'native-vlan-id', vlan_id )
-        end
-      end    
-    end     
-    
+            
   end # class methods for changing untagged_vlan
 end
 
